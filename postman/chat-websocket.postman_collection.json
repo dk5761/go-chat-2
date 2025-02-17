@@ -1,0 +1,83 @@
+{
+  "info": {
+    "_postman_id": "websocket-chat-collection",
+    "name": "Chat WebSocket Testing",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "User 1 WebSocket",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3Mzk4NTkzNzcsInVzZXJfaWQiOiJhZDI5NjhkMC0zMmQwLTRmNzUtOWMzMS03NmE2OWFkMjM2MGUifQ.teLdzRb1roPGMn7IuObxbFAV41P42w2_Rvcc0t7S8dY",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "ws://localhost:8080/api/v1/ws",
+          "protocol": "ws",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["api", "v1", "ws"]
+        }
+      },
+      "protocolProfileBehavior": {
+        "followRedirects": true
+      },
+      "response": []
+    },
+    {
+      "name": "User 2 WebSocket",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3Mzk4NTk0MjcsInVzZXJfaWQiOiJhMzkxNDQ5NC1jNDUxLTQ5Y2QtYWQ1Ni01MjdhZTdmNDVmOTEifQ.nqc_iKp37oCSrWN2W3VqHj1hOdabfd_H471lrNmAIF0",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "ws://localhost:8080/api/v1/ws",
+          "protocol": "ws",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["api", "v1", "ws"]
+        }
+      },
+      "protocolProfileBehavior": {
+        "followRedirects": true
+      },
+      "response": []
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [""]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [""]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "user1_id",
+      "value": "ad2968d0-32d0-4f75-9c31-76a69ad2360e"
+    },
+    {
+      "key": "user2_id",
+      "value": "a3914494-c451-49cd-ad56-527ae7f45f91"
+    }
+  ]
+}

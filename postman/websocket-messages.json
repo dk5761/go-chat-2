@@ -1,0 +1,38 @@
+{
+  "message_templates": {
+    "user1_to_user2": {
+      "chat_message": {
+        "type": "chat",
+        "recipient_id": "a3914494-c451-49cd-ad56-527ae7f45f91",
+        "content": "Hello from User 1!",
+        "content_type": "text"
+      },
+      "typing_indicator": {
+        "type": "typing",
+        "recipient_id": "a3914494-c451-49cd-ad56-527ae7f45f91"
+      },
+      "read_receipt": {
+        "type": "read",
+        "recipient_id": "a3914494-c451-49cd-ad56-527ae7f45f91",
+        "content": "MESSAGE_UUID_HERE"
+      }
+    },
+    "user2_to_user1": {
+      "chat_message": {
+        "type": "chat",
+        "recipient_id": "ad2968d0-32d0-4f75-9c31-76a69ad2360e",
+        "content": "Hello from User 2!",
+        "content_type": "text"
+      },
+      "typing_indicator": {
+        "type": "typing",
+        "recipient_id": "ad2968d0-32d0-4f75-9c31-76a69ad2360e"
+      },
+      "read_receipt": {
+        "type": "read",
+        "recipient_id": "ad2968d0-32d0-4f75-9c31-76a69ad2360e",
+        "content": "MESSAGE_UUID_HERE"
+      }
+    }
+  }
+}

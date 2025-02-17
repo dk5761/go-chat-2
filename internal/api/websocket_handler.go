@@ -2,13 +2,15 @@ package api
 
 import (
 	"errors"
+	"log"
 	"net/http"
 
-	"github.com/chat-backend/internal/service"
-	wsmanager "github.com/chat-backend/internal/websocket"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
+
+	"github.com/chat-backend/internal/service"
+	wsmanager "github.com/chat-backend/internal/websocket"
 )
 
 type WebSocketHandler struct {
@@ -49,6 +51,7 @@ func (h *WebSocketHandler) HandleConnection(c *gin.Context) {
 	// Upgrade HTTP connection to WebSocket
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
+		log.Printf("Error upgrading connection: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not upgrade connection"})
 		return
 	}
