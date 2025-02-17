@@ -4,9 +4,9 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/chat-backend/internal/service"
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
+
+	"github.com/chat-backend/internal/service"
 )
 
 type MessageHandler struct {
@@ -36,12 +36,7 @@ func (h *MessageHandler) SendMessage(c *gin.Context) {
 }
 
 func (h *MessageHandler) GetMessage(c *gin.Context) {
-	messageID, err := uuid.Parse(c.Param("id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid message ID"})
-		return
-	}
-
+	messageID := c.Param("id")
 	message, err := h.messageService.GetMessage(c.Request.Context(), messageID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "message not found"})
@@ -52,11 +47,7 @@ func (h *MessageHandler) GetMessage(c *gin.Context) {
 }
 
 func (h *MessageHandler) GetUserMessages(c *gin.Context) {
-	userID, err := uuid.Parse(c.Param("id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user ID"})
-		return
-	}
+	userID := c.Param("id")
 
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
 	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
@@ -71,11 +62,7 @@ func (h *MessageHandler) GetUserMessages(c *gin.Context) {
 }
 
 func (h *MessageHandler) GetGroupMessages(c *gin.Context) {
-	groupID, err := uuid.Parse(c.Param("id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid group ID"})
-		return
-	}
+	groupID := c.Param("id")
 
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
 	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
@@ -90,17 +77,8 @@ func (h *MessageHandler) GetGroupMessages(c *gin.Context) {
 }
 
 func (h *MessageHandler) GetConversation(c *gin.Context) {
-	user1ID, err := uuid.Parse(c.Param("user1_id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user1 ID"})
-		return
-	}
-
-	user2ID, err := uuid.Parse(c.Param("user2_id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user2 ID"})
-		return
-	}
+	user1ID := c.Param("user1_id")
+	user2ID := c.Param("user2_id")
 
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
 	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
@@ -115,14 +93,10 @@ func (h *MessageHandler) GetConversation(c *gin.Context) {
 }
 
 func (h *MessageHandler) MarkAsRead(c *gin.Context) {
-	messageID, err := uuid.Parse(c.Param("id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid message ID"})
-		return
-	}
+	messageID := c.Param("id")
 
 	var input struct {
-		UserID uuid.UUID `json:"user_id" binding:"required"`
+		UserID string `json:"user_id" binding:"required"`
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -139,11 +113,7 @@ func (h *MessageHandler) MarkAsRead(c *gin.Context) {
 }
 
 func (h *MessageHandler) DeleteMessage(c *gin.Context) {
-	messageID, err := uuid.Parse(c.Param("id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid message ID"})
-		return
-	}
+	messageID := c.Param("id")
 
 	if err := h.messageService.DeleteMessage(c.Request.Context(), messageID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

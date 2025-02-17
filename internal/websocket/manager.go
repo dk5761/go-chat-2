@@ -6,14 +6,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
 	"github.com/sourcegraph/conc"
 )
 
 type Client struct {
-	ID       uuid.UUID
+	ID       string
 	Conn     *websocket.Conn
 	Send     chan []byte
 	Manager  *Manager
@@ -22,7 +21,7 @@ type Client struct {
 }
 
 type Manager struct {
-	clients    map[uuid.UUID]*Client
+	clients    map[string]*Client
 	broadcast  chan []byte
 	register   chan *Client
 	unregister chan *Client
@@ -41,16 +40,16 @@ const (
 
 type WebSocketMessage struct {
 	Type        MessageType `json:"type"`
-	SenderID    uuid.UUID   `json:"sender_id"`
-	RecipientID *uuid.UUID  `json:"recipient_id,omitempty"`
-	GroupID     *uuid.UUID  `json:"group_id,omitempty"`
+	SenderID    string      `json:"sender_id"`
+	RecipientID *string     `json:"recipient_id,omitempty"`
+	GroupID     *string     `json:"group_id,omitempty"`
 	Content     string      `json:"content"`
 	Timestamp   time.Time   `json:"timestamp"`
 }
 
 func NewManager(logger *logrus.Logger) *Manager {
 	return &Manager{
-		clients:    make(map[uuid.UUID]*Client),
+		clients:    make(map[string]*Client),
 		broadcast:  make(chan []byte),
 		register:   make(chan *Client),
 		unregister: make(chan *Client),
@@ -120,7 +119,7 @@ func (m *Manager) shutdown() {
 	m.wg.Wait()
 }
 
-func (m *Manager) SendToUser(userID uuid.UUID, message []byte) error {
+func (m *Manager) SendToUser(userID string, message []byte) error {
 	m.mu.RLock()
 	client, exists := m.clients[userID]
 	m.mu.RUnlock()
@@ -137,7 +136,7 @@ func (m *Manager) SendToUser(userID uuid.UUID, message []byte) error {
 	}
 }
 
-func (m *Manager) SendToGroup(groupID uuid.UUID, message []byte, excludeUserID uuid.UUID) {
+func (m *Manager) SendToGroup(groupID string, message []byte, excludeUserID string) {
 	m.broadcast <- message
 }
 

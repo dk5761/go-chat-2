@@ -8,7 +8,6 @@ import (
 	firebase "firebase.google.com/go/v4"
 	"firebase.google.com/go/v4/messaging"
 	"github.com/chat-backend/internal/models"
-	"github.com/google/uuid"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/sourcegraph/conc"
 )
@@ -22,7 +21,7 @@ type NotificationService struct {
 }
 
 type PushNotification struct {
-	UserID      uuid.UUID         `json:"user_id"`
+	UserID      string            `json:"user_id"`
 	Title       string            `json:"title"`
 	Body        string            `json:"body"`
 	Data        map[string]string `json:"data"`
@@ -167,8 +166,8 @@ func (s *NotificationService) NotifyNewMessage(ctx context.Context, message *mod
 		DeviceToken: recipientToken,
 		Priority:    "high",
 		Data: map[string]string{
-			"message_id": message.ID.String(),
-			"sender_id":  message.SenderID.String(),
+			"message_id": message.ID,
+			"sender_id":  message.SenderID,
 			"type":       "new_message",
 		},
 	}
@@ -190,9 +189,9 @@ func (s *NotificationService) NotifyGroupMessage(ctx context.Context, message *m
 				DeviceToken: token,
 				Priority:    "high",
 				Data: map[string]string{
-					"message_id": message.ID.String(),
-					"sender_id":  message.SenderID.String(),
-					"group_id":   message.GroupID.String(),
+					"message_id": message.ID,
+					"sender_id":  message.SenderID,
+					"group_id":   *message.GroupID,
 					"type":       "group_message",
 				},
 			}

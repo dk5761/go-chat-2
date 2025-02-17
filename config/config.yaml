@@ -12,17 +12,11 @@ postgres:
   max_idle_conns: 10
   conn_max_lifetime: "1h"
 
-cassandra:
-  hosts: 
-    - cassandra
-  keyspace: chat
-  consistency: quorum
+mongodb:
+  uri: "mongodb://mongodb:27017"
+  database: chat
   timeout: "5s"
   connect_timeout: "10s"
-  retry_policy:
-    num_retries: 3
-    min_duration: "1s"
-    max_duration: "10s"
 
 redis:
   addr: "redis:6379"
@@ -31,7 +25,7 @@ redis:
   pool_size: 100
 
 rabbitmq:
-  url: "amqp://guest:guest@rabbitmq:5672/"
+  uri: "amqp://guest:guest@rabbitmq:5672/"
   exchange: chat
   queue: notifications
 

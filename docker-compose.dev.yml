@@ -17,10 +17,10 @@ services:
       - POSTGRES_USER=chatapp
       - POSTGRES_PASSWORD=chatapp123
       - POSTGRES_DB=chat
-      - CASSANDRA_HOSTS=cassandra
-      - CASSANDRA_KEYSPACE=chat
+      - MONGODB_URI=mongodb://mongodb:27017
+      - MONGODB_DATABASE=chat
       - REDIS_ADDR=redis:6379
-      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+      - RABBITMQ_URI=amqp://guest:guest@rabbitmq:5672/
       - JWT_SECRET=your-jwt-secret-key
       - GIN_MODE=debug
       - GO_ENV=development
@@ -29,7 +29,7 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      cassandra:
+      mongodb:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -72,25 +72,25 @@ services:
     depends_on:
       - postgres
 
-  cassandra:
-    image: cassandra:4.0
+  mongodb:
+    image: mongo:6.0
     ports:
-      - "9042:9042"
-    environment:
-      - CASSANDRA_CLUSTER_NAME=chat_cluster
-      - CASSANDRA_DC=datacenter1
-      - CASSANDRA_ENDPOINT_SNITCH=SimpleSnitch
+      - "27017:27017"
     volumes:
-      - cassandra-data:/var/lib/cassandra
-      - ./docker/cassandra/init.cql:/docker-entrypoint-initdb.d/init.cql
-    networks:
-      - chat-network
-    healthcheck:
-      test: ["CMD-SHELL", "cqlsh -e 'describe keyspaces'"]
-      interval: 15s
-      timeout: 10s
-      retries: 10
-    command: sh -c 'docker-entrypoint.sh cassandra -f & sleep 30 && cqlsh -f /docker-entrypoint-initdb.d/init.cql && tail -f /dev/null'
+      - ./.data/mongodb:/data/db
+      - ./scripts/init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
+    environment:
+      - MONGO_INITDB_DATABASE=chat
+
+  mongo-express:
+    image: mongo-express:latest
+    ports:
+      - "8081:8081"
+    environment:
+      - ME_CONFIG_MONGODB_SERVER=mongodb
+      - ME_CONFIG_MONGODB_PORT=27017
+    depends_on:
+      - mongodb
 
   redis:
     image: redis:7-alpine
@@ -119,22 +119,12 @@ services:
       - redis
 
   rabbitmq:
-    image: rabbitmq:3.12-management-alpine
+    image: rabbitmq:3.12-management
     ports:
       - "5672:5672"
       - "15672:15672"
-    environment:
-      - RABBITMQ_DEFAULT_USER=guest
-      - RABBITMQ_DEFAULT_PASS=guest
     volumes:
-      - rabbitmq-data:/var/lib/rabbitmq
-    networks:
-      - chat-network
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      - ./.data/rabbitmq:/var/lib/rabbitmq
 
 volumes:
   go-mod-cache:
@@ -158,25 +148,11 @@ volumes:
       device: ${PWD}/.data/pgadmin
       o: bind
 
-  cassandra-data:
-    driver: local
-    driver_opts:
-      type: none
-      device: ${PWD}/.data/cassandra
-      o: bind
-
   redis-data:
     driver: local
     driver_opts:
       type: none
       device: ${PWD}/.data/redis
-      o: bind
-
-  rabbitmq-data:
-    driver: local
-    driver_opts:
-      type: none
-      device: ${PWD}/.data/rabbitmq
       o: bind
 
 networks:

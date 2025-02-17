@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"time"
 
 	"github.com/chat-backend/internal/models"
 	"github.com/google/uuid"
@@ -34,14 +35,14 @@ type GroupRepository interface {
 // MessageRepository handles all message-related database operations
 type MessageRepository interface {
 	Create(ctx context.Context, message *models.Message) error
-	GetByID(ctx context.Context, id uuid.UUID) (*models.Message, error)
-	GetUserMessages(ctx context.Context, userID uuid.UUID, limit int, offset int) ([]models.Message, error)
-	GetGroupMessages(ctx context.Context, groupID uuid.UUID, limit int, offset int) ([]models.Message, error)
-	GetConversation(ctx context.Context, user1ID, user2ID uuid.UUID, limit int, offset int) ([]models.Message, error)
-	MarkAsRead(ctx context.Context, messageID uuid.UUID, userID uuid.UUID) error
-	MarkAsDelivered(ctx context.Context, messageID uuid.UUID, userID uuid.UUID) error
+	GetByID(ctx context.Context, id string) (*models.Message, error)
+	GetUserMessages(ctx context.Context, userID string, limit int, offset int) ([]models.Message, error)
+	GetGroupMessages(ctx context.Context, groupID string, limit int, offset int) ([]models.Message, error)
+	GetMessagesBetween(ctx context.Context, userID1, userID2 string, limit int64, before time.Time) ([]*models.Message, error)
+	MarkAsRead(ctx context.Context, messageID string, userID string) error
+	MarkAsDelivered(ctx context.Context, messageID string, userID string) error
 	Update(ctx context.Context, message *models.Message) error
-	Delete(ctx context.Context, id uuid.UUID) error
+	Delete(ctx context.Context, id string) error
 }
 
 // StatusRepository handles all user status related operations

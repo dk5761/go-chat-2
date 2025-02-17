@@ -6,7 +6,6 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 
 	"github.com/chat-backend/internal/service"
@@ -74,12 +73,12 @@ func (h *WebSocketHandler) HandleConnection(c *gin.Context) {
 	}
 }
 
-func (h *WebSocketHandler) getUserIDFromToken(c *gin.Context) (uuid.UUID, error) {
+func (h *WebSocketHandler) getUserIDFromToken(c *gin.Context) (string, error) {
 	token := c.GetHeader("Authorization")
 	if token == "" {
 		token = c.Query("token")
 		if token == "" {
-			return uuid.Nil, errors.New("no token provided")
+			return "", errors.New("no token provided")
 		}
 	}
 
@@ -88,7 +87,12 @@ func (h *WebSocketHandler) getUserIDFromToken(c *gin.Context) (uuid.UUID, error)
 		token = token[7:]
 	}
 
-	return h.userService.ValidateToken(token)
+	userUUID, err := h.userService.ValidateToken(token)
+	if err != nil {
+		return "", err
+	}
+
+	return userUUID.String(), nil
 }
 
 // RegisterRoutes registers the WebSocket routes

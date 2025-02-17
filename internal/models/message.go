@@ -7,19 +7,19 @@ import (
 )
 
 type Message struct {
-	ID            uuid.UUID   `json:"id" cql:"id"`
-	SenderID      uuid.UUID   `json:"sender_id" cql:"sender_id"`
-	RecipientID   *uuid.UUID  `json:"recipient_id,omitempty" cql:"recipient_id"`
-	GroupID       *uuid.UUID  `json:"group_id,omitempty" cql:"group_id"`
-	Content       string      `json:"content" cql:"content"`
-	ContentType   string      `json:"content_type" cql:"content_type"` // "text", "image", etc.
-	Timestamp     time.Time   `json:"timestamp" cql:"timestamp"`
-	ReadBy        []uuid.UUID `json:"read_by" cql:"read_by"`
-	DeliveredTo   []uuid.UUID `json:"delivered_to" cql:"delivered_to"`
-	ReplyToID     *uuid.UUID  `json:"reply_to_id,omitempty" cql:"reply_to_id"`
-	Attachments   []string    `json:"attachments,omitempty" cql:"attachments"`
-	IsEdited      bool        `json:"is_edited" cql:"is_edited"`
-	EditTimestamp *time.Time  `json:"edit_timestamp,omitempty" cql:"edit_timestamp"`
+	ID            string     `json:"id" bson:"id"`
+	SenderID      string     `json:"sender_id" bson:"sender_id"`
+	RecipientID   *string    `json:"recipient_id,omitempty" bson:"recipient_id,omitempty"`
+	GroupID       *string    `json:"group_id,omitempty" bson:"group_id,omitempty"`
+	Content       string     `json:"content" bson:"content"`
+	ContentType   string     `json:"content_type" bson:"content_type"` // "text", "image", etc.
+	Timestamp     time.Time  `json:"timestamp" bson:"timestamp"`
+	ReadBy        []string   `json:"read_by" bson:"read_by"`
+	DeliveredTo   []string   `json:"delivered_to" bson:"delivered_to"`
+	ReplyToID     *string    `json:"reply_to_id,omitempty" bson:"reply_to_id,omitempty"`
+	Attachments   []string   `json:"attachments,omitempty" bson:"attachments,omitempty"`
+	IsEdited      bool       `json:"is_edited" bson:"is_edited"`
+	EditTimestamp *time.Time `json:"edit_timestamp,omitempty" bson:"edit_timestamp,omitempty"`
 }
 
 // CQL table creation statement
@@ -58,3 +58,14 @@ const (
 	ContentTypeImage = "image"
 	ContentTypeFile  = "file"
 )
+
+// NewMessage creates a new message with a generated UUID and current timestamp
+func NewMessage() *Message {
+	return &Message{
+		ID:          uuid.New().String(),
+		Timestamp:   time.Now(),
+		ReadBy:      make([]string, 0),
+		DeliveredTo: make([]string, 0),
+		IsEdited:    false,
+	}
+}

@@ -6,25 +6,26 @@ import (
 	"os"
 	"strings"
 
-	"github.com/gocql/gocql"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
+
+	"github.com/chat-backend/internal/repository/mongodb"
 )
 
 type Migrator struct {
-	logger           *logrus.Logger
-	postgresDB       *gorm.DB
-	cassandraSession *gocql.Session
+	logger     *logrus.Logger
+	postgresDB *gorm.DB
+	mongoDB    *mongodb.DB
 }
 
-func NewMigrator(logger *logrus.Logger, postgresDB *gorm.DB, cassandraSession *gocql.Session) *Migrator {
+func NewMigrator(logger *logrus.Logger, postgresDB *gorm.DB, mongoDB *mongodb.DB) *Migrator {
 	return &Migrator{
-		logger:           logger,
-		postgresDB:       postgresDB,
-		cassandraSession: cassandraSession,
+		logger:     logger,
+		postgresDB: postgresDB,
+		mongoDB:    mongoDB,
 	}
 }
 
@@ -33,8 +34,8 @@ func (m *Migrator) RunMigrations(ctx context.Context) error {
 		return fmt.Errorf("postgres migrations failed: %w", err)
 	}
 
-	if err := m.runCassandraMigrations(ctx); err != nil {
-		return fmt.Errorf("cassandra migrations failed: %w", err)
+	if err := m.runMongoMigrations(ctx); err != nil {
+		return fmt.Errorf("mongodb migrations failed: %w", err)
 	}
 
 	return nil
@@ -70,34 +71,27 @@ func (m *Migrator) runPostgresMigrations() error {
 	return nil
 }
 
-func (m *Migrator) runCassandraMigrations(ctx context.Context) error {
-	m.logger.Info("Running Cassandra migrations")
+func (m *Migrator) runMongoMigrations(ctx context.Context) error {
+	m.logger.Info("Running MongoDB migrations")
 
 	// Read and execute migration files
 	files := []string{
-		"migrations/cassandra/000001_create_keyspace.up.cql",
-		"migrations/cassandra/000002_create_messages.up.cql",
+		"scripts/init-mongo.js",
 	}
 
 	for _, file := range files {
-		m.logger.Infof("Applying Cassandra migration: %s", file)
-		if err := m.executeCQLFile(ctx, file); err != nil {
+		m.logger.Infof("Applying MongoDB migration: %s", file)
+		if err := m.executeJSFile(ctx, file); err != nil {
 			return err
 		}
 	}
 
-	m.logger.Info("Cassandra migrations completed")
+	m.logger.Info("MongoDB migrations completed")
 	return nil
 }
 
-func (m *Migrator) executeCQLFile(ctx context.Context, filePath string) error {
-	// In a real implementation, you would:
-	// 1. Read the CQL file
-	// 2. Split into individual statements
-	// 3. Execute each statement
-	// For now, we'll use the hardcoded schema since we know it
-
-	// Read the CQL file content
+func (m *Migrator) executeJSFile(ctx context.Context, filePath string) error {
+	// Read the JS file content
 	content, err := os.ReadFile(filePath)
 	if err != nil {
 		return fmt.Errorf("failed to read migration file %s: %w", filePath, err)
@@ -113,7 +107,7 @@ func (m *Migrator) executeCQLFile(ctx context.Context, filePath string) error {
 			continue
 		}
 
-		if err := m.cassandraSession.Query(stmt).WithContext(ctx).Exec(); err != nil {
+		if err := m.mongoDB.GetDatabase().RunCommand(ctx, stmt).Err(); err != nil {
 			return fmt.Errorf("failed to execute statement from %s: %w", filePath, err)
 		}
 	}

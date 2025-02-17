@@ -6,11 +6,12 @@ import (
 	"errors"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/sourcegraph/conc"
+
 	"github.com/chat-backend/internal/models"
 	"github.com/chat-backend/internal/repository"
 	"github.com/chat-backend/internal/websocket"
-	"github.com/google/uuid"
-	"github.com/sourcegraph/conc"
 )
 
 type MessageService struct {
@@ -35,13 +36,13 @@ func NewMessageService(
 }
 
 type SendMessageInput struct {
-	SenderID    uuid.UUID  `json:"sender_id"`
-	RecipientID *uuid.UUID `json:"recipient_id,omitempty"`
-	GroupID     *uuid.UUID `json:"group_id,omitempty"`
-	Content     string     `json:"content"`
-	ContentType string     `json:"content_type"`
-	ReplyToID   *uuid.UUID `json:"reply_to_id,omitempty"`
-	Attachments []string   `json:"attachments,omitempty"`
+	SenderID    string   `json:"sender_id"`
+	RecipientID *string  `json:"recipient_id,omitempty"`
+	GroupID     *string  `json:"group_id,omitempty"`
+	Content     string   `json:"content"`
+	ContentType string   `json:"content_type"`
+	ReplyToID   *string  `json:"reply_to_id,omitempty"`
+	Attachments []string `json:"attachments,omitempty"`
 }
 
 func (s *MessageService) SendMessage(ctx context.Context, input SendMessageInput) (*models.Message, error) {
@@ -55,15 +56,15 @@ func (s *MessageService) SendMessage(ctx context.Context, input SendMessageInput
 
 	// Create message
 	message := &models.Message{
-		ID:          uuid.New(),
+		ID:          uuid.New().String(),
 		SenderID:    input.SenderID,
 		RecipientID: input.RecipientID,
 		GroupID:     input.GroupID,
 		Content:     input.Content,
 		ContentType: input.ContentType,
 		Timestamp:   time.Now(),
-		ReadBy:      []uuid.UUID{input.SenderID}, // Mark as read by sender
-		DeliveredTo: []uuid.UUID{input.SenderID}, // Mark as delivered to sender
+		ReadBy:      []string{input.SenderID}, // Mark as read by sender
+		DeliveredTo: []string{input.SenderID}, // Mark as delivered to sender
 		ReplyToID:   input.ReplyToID,
 		Attachments: input.Attachments,
 	}
@@ -133,27 +134,35 @@ func (s *MessageService) deliverGroupMessage(ctx context.Context, message *model
 	return nil
 }
 
-func (s *MessageService) GetMessage(ctx context.Context, id uuid.UUID) (*models.Message, error) {
+func (s *MessageService) GetMessage(ctx context.Context, id string) (*models.Message, error) {
 	return s.messageRepo.GetByID(ctx, id)
 }
 
-func (s *MessageService) GetUserMessages(ctx context.Context, userID uuid.UUID, limit, offset int) ([]models.Message, error) {
+func (s *MessageService) GetUserMessages(ctx context.Context, userID string, limit, offset int) ([]models.Message, error) {
 	return s.messageRepo.GetUserMessages(ctx, userID, limit, offset)
 }
 
-func (s *MessageService) GetGroupMessages(ctx context.Context, groupID uuid.UUID, limit, offset int) ([]models.Message, error) {
+func (s *MessageService) GetGroupMessages(ctx context.Context, groupID string, limit, offset int) ([]models.Message, error) {
 	return s.messageRepo.GetGroupMessages(ctx, groupID, limit, offset)
 }
 
-func (s *MessageService) GetConversation(ctx context.Context, user1ID, user2ID uuid.UUID, limit, offset int) ([]models.Message, error) {
-	return s.messageRepo.GetConversation(ctx, user1ID, user2ID, limit, offset)
+func (s *MessageService) GetConversation(ctx context.Context, user1ID, user2ID string, limit, offset int) ([]models.Message, error) {
+	messages, err := s.messageRepo.GetMessagesBetween(ctx, user1ID, user2ID, int64(limit), time.Now())
+	if err != nil {
+		return nil, err
+	}
+	result := make([]models.Message, len(messages))
+	for i, msg := range messages {
+		result[i] = *msg
+	}
+	return result, nil
 }
 
-func (s *MessageService) MarkAsRead(ctx context.Context, messageID, userID uuid.UUID) error {
+func (s *MessageService) MarkAsRead(ctx context.Context, messageID string, userID string) error {
 	return s.messageRepo.MarkAsRead(ctx, messageID, userID)
 }
 
-func (s *MessageService) MarkAsDelivered(ctx context.Context, messageID, userID uuid.UUID) error {
+func (s *MessageService) MarkAsDelivered(ctx context.Context, messageID string, userID string) error {
 	return s.messageRepo.MarkAsDelivered(ctx, messageID, userID)
 }
 
@@ -161,6 +170,6 @@ func (s *MessageService) UpdateMessage(ctx context.Context, message *models.Mess
 	return s.messageRepo.Update(ctx, message)
 }
 
-func (s *MessageService) DeleteMessage(ctx context.Context, id uuid.UUID) error {
+func (s *MessageService) DeleteMessage(ctx context.Context, id string) error {
 	return s.messageRepo.Delete(ctx, id)
 }

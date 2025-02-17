@@ -196,14 +196,42 @@ func (s *UserService) ValidateToken(tokenString string) (uuid.UUID, error) {
 	return uuid.Nil, errors.New("invalid token")
 }
 
-func (s *UserService) UpdateStatus(ctx context.Context, userID uuid.UUID, status string) error {
-	return s.statusRepo.UpdateStatus(ctx, userID, status)
+func (s *UserService) UpdateStatus(ctx context.Context, userID string, status string) error {
+	userUUID, err := uuid.Parse(userID)
+	if err != nil {
+		return err
+	}
+	return s.statusRepo.UpdateStatus(ctx, userUUID, status)
 }
 
-func (s *UserService) GetUserStatus(ctx context.Context, userID uuid.UUID) (string, error) {
-	return s.statusRepo.GetStatus(ctx, userID)
+func (s *UserService) GetUserStatus(ctx context.Context, userID string) (string, error) {
+	userUUID, err := uuid.Parse(userID)
+	if err != nil {
+		return "", err
+	}
+	return s.statusRepo.GetStatus(ctx, userUUID)
 }
 
-func (s *UserService) GetMultiUserStatus(ctx context.Context, userIDs []uuid.UUID) (map[uuid.UUID]string, error) {
-	return s.statusRepo.GetMultiStatus(ctx, userIDs)
+func (s *UserService) GetMultiUserStatus(ctx context.Context, userIDs []string) (map[string]string, error) {
+	uuids := make([]uuid.UUID, len(userIDs))
+	for i, id := range userIDs {
+		uuid, err := uuid.Parse(id)
+		if err != nil {
+			return nil, err
+		}
+		uuids[i] = uuid
+	}
+
+	statuses, err := s.statusRepo.GetMultiStatus(ctx, uuids)
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert UUID keys to strings
+	result := make(map[string]string, len(statuses))
+	for id, status := range statuses {
+		result[id.String()] = status
+	}
+
+	return result, nil
 }

@@ -92,11 +92,7 @@ func (h *UserHandler) UpdatePassword(c *gin.Context) {
 }
 
 func (h *UserHandler) GetUserStatus(c *gin.Context) {
-	userID, err := uuid.Parse(c.Param("id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user ID"})
-		return
-	}
+	userID := c.Param("id")
 
 	status, err := h.userService.GetUserStatus(c.Request.Context(), userID)
 	if err != nil {
@@ -109,7 +105,7 @@ func (h *UserHandler) GetUserStatus(c *gin.Context) {
 
 func (h *UserHandler) GetMultiUserStatus(c *gin.Context) {
 	var input struct {
-		UserIDs []uuid.UUID `json:"user_ids" binding:"required"`
+		UserIDs []string `json:"user_ids" binding:"required"`
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {

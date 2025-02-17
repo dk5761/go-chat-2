@@ -1,13 +1,15 @@
 package app
 
 import (
+	"context"
 	"fmt"
 
-	"github.com/gocql/gocql"
 	"github.com/redis/go-redis/v9"
 	"github.com/spf13/viper"
 	pgdriver "gorm.io/driver/postgres"
 	"gorm.io/gorm"
+
+	"github.com/chat-backend/internal/repository/mongodb"
 )
 
 func initPostgres() (*gorm.DB, error) {
@@ -37,14 +39,12 @@ func initPostgres() (*gorm.DB, error) {
 	return db, nil
 }
 
-func initCassandra() (*gocql.Session, error) {
-	cluster := gocql.NewCluster(viper.GetStringSlice("cassandra.hosts")...)
-	cluster.Keyspace = viper.GetString("cassandra.keyspace")
-	cluster.Consistency = gocql.Quorum
-	cluster.Timeout = viper.GetDuration("cassandra.timeout")
-	cluster.ConnectTimeout = viper.GetDuration("cassandra.connect_timeout")
-
-	return cluster.CreateSession()
+func initMongoDB(ctx context.Context) (*mongodb.DB, error) {
+	return mongodb.NewDB(
+		ctx,
+		viper.GetString("mongodb.uri"),
+		viper.GetString("mongodb.database"),
+	)
 }
 
 func initRedis() *redis.Client {
