@@ -1,0 +1,28 @@
+# Development data directories
+.data/
+.cache/
+
+# Binaries
+/chat-server
+/tmp/
+
+# IDE files
+.idea/
+.vscode/
+
+# Logs
+*.log
+
+# Environment files
+.env
+.env.*
+
+# Go specific
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+go.work 

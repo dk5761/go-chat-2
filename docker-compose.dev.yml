@@ -1,0 +1,184 @@
+version: "3.8"
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - "8080:8080"
+      - "2345:2345" # delve debugger
+    volumes:
+      - .:/app
+      - go-mod-cache:/go/pkg/mod
+    environment:
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=chatapp
+      - POSTGRES_PASSWORD=chatapp123
+      - POSTGRES_DB=chat
+      - CASSANDRA_HOSTS=cassandra
+      - CASSANDRA_KEYSPACE=chat
+      - REDIS_ADDR=redis:6379
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+      - JWT_SECRET=your-jwt-secret-key
+      - GIN_MODE=debug
+      - GO_ENV=development
+    networks:
+      - chat-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      cassandra:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    # Enable real-time logging
+    tty: true
+    stdin_open: true
+
+  postgres:
+    image: postgres:14-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=chatapp
+      - POSTGRES_PASSWORD=chatapp123
+      - POSTGRES_DB=chat
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - chat-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U chatapp -d chat"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  pgadmin:
+    image: dpage/pgadmin4
+    ports:
+      - "5050:80"
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@chat.com
+      - PGADMIN_DEFAULT_PASSWORD=admin123
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+    networks:
+      - chat-network
+    depends_on:
+      - postgres
+
+  cassandra:
+    image: cassandra:4.0
+    ports:
+      - "9042:9042"
+    environment:
+      - CASSANDRA_CLUSTER_NAME=chat_cluster
+      - CASSANDRA_DC=datacenter1
+      - CASSANDRA_ENDPOINT_SNITCH=SimpleSnitch
+    volumes:
+      - cassandra-data:/var/lib/cassandra
+      - ./docker/cassandra/init.cql:/docker-entrypoint-initdb.d/init.cql
+    networks:
+      - chat-network
+    healthcheck:
+      test: ["CMD-SHELL", "cqlsh -e 'describe keyspaces'"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+    command: sh -c 'docker-entrypoint.sh cassandra -f & sleep 30 && cqlsh -f /docker-entrypoint-initdb.d/init.cql && tail -f /dev/null'
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    networks:
+      - chat-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis-commander:
+    image: rediscommander/redis-commander
+    ports:
+      - "8081:8081"
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+    networks:
+      - chat-network
+    depends_on:
+      - redis
+
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    networks:
+      - chat-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  go-mod-cache:
+    driver: local
+    driver_opts:
+      type: none
+      device: ${PWD}/.cache/go-mod
+      o: bind
+
+  postgres-data:
+    driver: local
+    driver_opts:
+      type: none
+      device: ${PWD}/.data/postgres
+      o: bind
+
+  pgadmin-data:
+    driver: local
+    driver_opts:
+      type: none
+      device: ${PWD}/.data/pgadmin
+      o: bind
+
+  cassandra-data:
+    driver: local
+    driver_opts:
+      type: none
+      device: ${PWD}/.data/cassandra
+      o: bind
+
+  redis-data:
+    driver: local
+    driver_opts:
+      type: none
+      device: ${PWD}/.data/redis
+      o: bind
+
+  rabbitmq-data:
+    driver: local
+    driver_opts:
+      type: none
+      device: ${PWD}/.data/rabbitmq
+      o: bind
+
+networks:
+  chat-network:
+    driver: bridge

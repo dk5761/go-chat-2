@@ -1,0 +1,29 @@
+FROM golang:1.24-alpine
+
+WORKDIR /app
+
+# Install development tools and dependencies
+RUN apk add --no-cache git gcc musl-dev && \
+    go install github.com/air-verse/air@latest && \
+    go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+
+# Install dependencies
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Copy source code
+COPY . .
+
+# Copy air config
+COPY .air.toml .
+
+# Expose ports
+EXPOSE 8080
+EXPOSE 2345
+
+# Set environment for development
+ENV GIN_MODE=debug
+ENV GO_ENV=development
+
+# Start app with hot reloading
+CMD ["air", "-c", ".air.toml"] 

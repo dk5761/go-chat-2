@@ -1,0 +1,59 @@
+server:
+  port: "8080"
+  shutdown_timeout: "30s"
+
+postgres:
+  host: postgres
+  port: 5432
+  user: chatapp
+  password: chatapp123
+  database: chat
+  max_open_conns: 100
+  max_idle_conns: 10
+  conn_max_lifetime: "1h"
+
+cassandra:
+  hosts: 
+    - cassandra
+  keyspace: chat
+  consistency: quorum
+  timeout: "5s"
+  connect_timeout: "10s"
+  retry_policy:
+    num_retries: 3
+    min_duration: "1s"
+    max_duration: "10s"
+
+redis:
+  addr: "redis:6379"
+  password: ""
+  db: 0
+  pool_size: 100
+
+rabbitmq:
+  url: "amqp://guest:guest@rabbitmq:5672/"
+  exchange: chat
+  queue: notifications
+
+fcm:
+  credentials_file: "config/fcm-credentials.json"
+  project_id: "your-project-id"
+
+jwt:
+  secret: "your-jwt-secret-key"
+  expiration: "24h"
+
+websocket:
+  read_buffer_size: 1024
+  write_buffer_size: 1024
+  ping_period: "30s"
+  pong_wait: "60s"
+  write_wait: "10s"
+  max_message_size: 512
+
+groups:
+  max_size: 200
+
+logging:
+  level: "info"
+  format: "json" 
