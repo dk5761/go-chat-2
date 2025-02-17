@@ -5,31 +5,29 @@ services:
     build: .
     ports:
       - "8080:8080"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      cassandra:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
     environment:
       - POSTGRES_HOST=postgres
       - POSTGRES_PORT=5432
       - POSTGRES_USER=chatapp
       - POSTGRES_PASSWORD=chatapp123
       - POSTGRES_DB=chat
-      - CASSANDRA_HOSTS=cassandra
-      - CASSANDRA_KEYSPACE=chat
+      - MONGODB_URI=mongodb://mongodb:27017
+      - MONGODB_DATABASE=chat
       - REDIS_ADDR=redis:6379
-      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
-      - JWT_SECRET=your-jwt-secret-key
-    volumes:
-      - ./config:/app/config
-      - ./migrations:/app/migrations
+      - RABBITMQ_URI=amqp://guest:guest@rabbitmq:5672/
+      - JWT_SECRET=${JWT_SECRET}
+      - GIN_MODE=release
     networks:
       - chat-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     restart: unless-stopped
 
   postgres:
@@ -51,23 +49,21 @@ services:
       retries: 5
     restart: unless-stopped
 
-  cassandra:
-    image: cassandra:4.0
+  mongodb:
+    image: mongo:6.0
     ports:
-      - "9042:9042"
-    environment:
-      - CASSANDRA_CLUSTER_NAME=chat_cluster
-      - CASSANDRA_DC=datacenter1
-      - CASSANDRA_ENDPOINT_SNITCH=SimpleSnitch
+      - "27017:27017"
     volumes:
-      - cassandra-data:/var/lib/cassandra
+      - mongodb-data:/data/db
+    environment:
+      - MONGO_INITDB_DATABASE=chat
     networks:
       - chat-network
     healthcheck:
-      test: ["CMD-SHELL", "cqlsh -e 'describe keyspaces'"]
-      interval: 15s
-      timeout: 10s
-      retries: 10
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     restart: unless-stopped
 
   redis:
@@ -87,13 +83,10 @@ services:
     restart: unless-stopped
 
   rabbitmq:
-    image: rabbitmq:3.12-management-alpine
+    image: rabbitmq:3.12-management
     ports:
-      - "5672:5672" # AMQP
-      - "15672:15672" # Management UI
-    environment:
-      - RABBITMQ_DEFAULT_USER=guest
-      - RABBITMQ_DEFAULT_PASS=guest
+      - "5672:5672"
+      - "15672:15672"
     volumes:
       - rabbitmq-data:/var/lib/rabbitmq
     networks:
@@ -107,7 +100,7 @@ services:
 
 volumes:
   postgres-data:
-  cassandra-data:
+  mongodb-data:
   redis-data:
   rabbitmq-data:
 

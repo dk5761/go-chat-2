@@ -77,10 +77,17 @@ services:
     ports:
       - "27017:27017"
     volumes:
-      - ./.data/mongodb:/data/db
+      - mongodb-data:/data/db
       - ./scripts/init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
     environment:
       - MONGO_INITDB_DATABASE=chat
+    networks:
+      - chat-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   mongo-express:
     image: mongo-express:latest
@@ -89,6 +96,10 @@ services:
     environment:
       - ME_CONFIG_MONGODB_SERVER=mongodb
       - ME_CONFIG_MONGODB_PORT=27017
+      - ME_CONFIG_BASICAUTH_USERNAME=admin
+      - ME_CONFIG_BASICAUTH_PASSWORD=admin123
+    networks:
+      - chat-network
     depends_on:
       - mongodb
 
@@ -124,7 +135,14 @@ services:
       - "5672:5672"
       - "15672:15672"
     volumes:
-      - ./.data/rabbitmq:/var/lib/rabbitmq
+      - rabbitmq-data:/var/lib/rabbitmq
+    networks:
+      - chat-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 volumes:
   go-mod-cache:
@@ -153,6 +171,20 @@ volumes:
     driver_opts:
       type: none
       device: ${PWD}/.data/redis
+      o: bind
+
+  mongodb-data:
+    driver: local
+    driver_opts:
+      type: none
+      device: ${PWD}/.data/mongodb
+      o: bind
+
+  rabbitmq-data:
+    driver: local
+    driver_opts:
+      type: none
+      device: ${PWD}/.data/rabbitmq
       o: bind
 
 networks:
