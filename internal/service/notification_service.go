@@ -7,9 +7,10 @@ import (
 
 	firebase "firebase.google.com/go/v4"
 	"firebase.google.com/go/v4/messaging"
-	"github.com/chat-backend/internal/models"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/sourcegraph/conc"
+
+	"github.com/chat-backend/internal/models"
 )
 
 type NotificationService struct {
@@ -160,14 +161,14 @@ func (s *NotificationService) sendPushNotification(ctx context.Context, notifica
 
 func (s *NotificationService) NotifyNewMessage(ctx context.Context, message *models.Message, recipientToken string) error {
 	notification := &PushNotification{
-		UserID:      *message.RecipientID,
+		UserID:      message.RecipientID.String(),
 		Title:       "New Message",
-		Body:        fmt.Sprintf("You have a new message from %s", message.SenderID),
+		Body:        fmt.Sprintf("You have a new message from %s", message.SenderID.String()),
 		DeviceToken: recipientToken,
 		Priority:    "high",
 		Data: map[string]string{
-			"message_id": message.ID,
-			"sender_id":  message.SenderID,
+			"message_id": message.ID.String(),
+			"sender_id":  message.SenderID.String(),
 			"type":       "new_message",
 		},
 	}
@@ -183,15 +184,15 @@ func (s *NotificationService) NotifyGroupMessage(ctx context.Context, message *m
 		token := token // Create new variable for goroutine
 		wg.Go(func() {
 			notification := &PushNotification{
-				UserID:      *message.GroupID,
+				UserID:      message.GroupID.String(),
 				Title:       fmt.Sprintf("New message in %s", groupName),
-				Body:        fmt.Sprintf("New message from %s", message.SenderID),
+				Body:        fmt.Sprintf("New message from %s", message.SenderID.String()),
 				DeviceToken: token,
 				Priority:    "high",
 				Data: map[string]string{
-					"message_id": message.ID,
-					"sender_id":  message.SenderID,
-					"group_id":   *message.GroupID,
+					"message_id": message.ID.String(),
+					"sender_id":  message.SenderID.String(),
+					"group_id":   message.GroupID.String(),
 					"type":       "group_message",
 				},
 			}

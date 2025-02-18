@@ -1,15 +1,12 @@
 package app
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/redis/go-redis/v9"
 	"github.com/spf13/viper"
 	pgdriver "gorm.io/driver/postgres"
 	"gorm.io/gorm"
-
-	"github.com/chat-backend/internal/repository/mongodb"
 )
 
 func initPostgres() (*gorm.DB, error) {
@@ -37,14 +34,6 @@ func initPostgres() (*gorm.DB, error) {
 	sqlDB.SetConnMaxLifetime(viper.GetDuration("postgres.conn_max_lifetime"))
 
 	return db, nil
-}
-
-func initMongoDB(ctx context.Context) (*mongodb.DB, error) {
-	return mongodb.NewDB(
-		ctx,
-		viper.GetString("mongodb.uri"),
-		viper.GetString("mongodb.database"),
-	)
 }
 
 func initRedis() *redis.Client {

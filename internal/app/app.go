@@ -38,11 +38,6 @@ func New() (*App, error) {
 		return nil, err
 	}
 
-	mongoDB, err := initMongoDB(context.Background())
-	if err != nil {
-		return nil, err
-	}
-
 	redisClient := initRedis()
 
 	// Initialize messaging
@@ -62,13 +57,13 @@ func New() (*App, error) {
 	}
 
 	// Run migrations
-	migrator := migrations.NewMigrator(logger, db, mongoDB)
+	migrator := migrations.NewMigrator(logger, db)
 	if err := migrator.RunMigrations(context.Background()); err != nil {
 		return nil, fmt.Errorf("failed to run migrations: %w", err)
 	}
 
 	// Initialize repositories
-	repos := initRepositories(db, mongoDB, redisClient)
+	repos := initRepositories(db, redisClient)
 
 	// Initialize services
 	services, err := initServices(repos, logger, rabbitmqChan, firebaseApp)

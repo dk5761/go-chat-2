@@ -10,7 +10,11 @@ import (
 )
 
 func initRabbitMQ() (*amqp.Connection, error) {
-	return amqp.Dial(viper.GetString("rabbitmq.url"))
+	uri := viper.GetString("rabbitmq.uri")
+	if uri == "" {
+		uri = "amqp://guest:guest@rabbitmq:5672"
+	}
+	return amqp.Dial(uri)
 }
 
 func initFirebase() (*firebase.App, error) {

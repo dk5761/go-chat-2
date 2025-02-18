@@ -24,6 +24,7 @@ EXPOSE 2345
 # Set environment for development
 ENV GIN_MODE=debug
 ENV GO_ENV=development
+ENV GOFLAGS="-buildvcs=false"
 
 # Start app with hot reloading
 CMD ["air", "-c", ".air.toml"] 

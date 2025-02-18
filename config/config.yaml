@@ -12,12 +12,6 @@ postgres:
   max_idle_conns: 10
   conn_max_lifetime: "1h"
 
-mongodb:
-  uri: "mongodb://mongodb:27017"
-  database: chat
-  timeout: "5s"
-  connect_timeout: "10s"
-
 redis:
   addr: "redis:6379"
   password: ""
@@ -25,7 +19,7 @@ redis:
   pool_size: 100
 
 rabbitmq:
-  uri: "amqp://guest:guest@rabbitmq:5672/"
+  uri: "amqp://guest:guest@rabbitmq:5672"
   exchange: chat
   queue: notifications
 

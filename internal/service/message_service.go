@@ -54,18 +54,51 @@ func (s *MessageService) SendMessage(ctx context.Context, input SendMessageInput
 		return nil, errors.New("cannot send message to both user and group")
 	}
 
+	// Convert string IDs to UUIDs
+	senderUUID, err := uuid.Parse(input.SenderID)
+	if err != nil {
+		return nil, errors.New("invalid sender ID")
+	}
+
+	var recipientUUID *uuid.UUID
+	if input.RecipientID != nil {
+		parsed, err := uuid.Parse(*input.RecipientID)
+		if err != nil {
+			return nil, errors.New("invalid recipient ID")
+		}
+		recipientUUID = &parsed
+	}
+
+	var groupUUID *uuid.UUID
+	if input.GroupID != nil {
+		parsed, err := uuid.Parse(*input.GroupID)
+		if err != nil {
+			return nil, errors.New("invalid group ID")
+		}
+		groupUUID = &parsed
+	}
+
+	var replyToUUID *uuid.UUID
+	if input.ReplyToID != nil {
+		parsed, err := uuid.Parse(*input.ReplyToID)
+		if err != nil {
+			return nil, errors.New("invalid reply-to ID")
+		}
+		replyToUUID = &parsed
+	}
+
 	// Create message
 	message := &models.Message{
-		ID:          uuid.New().String(),
-		SenderID:    input.SenderID,
-		RecipientID: input.RecipientID,
-		GroupID:     input.GroupID,
+		ID:          uuid.New(),
+		SenderID:    senderUUID,
+		RecipientID: recipientUUID,
+		GroupID:     groupUUID,
 		Content:     input.Content,
 		ContentType: input.ContentType,
 		Timestamp:   time.Now(),
-		ReadBy:      []string{input.SenderID}, // Mark as read by sender
-		DeliveredTo: []string{input.SenderID}, // Mark as delivered to sender
-		ReplyToID:   input.ReplyToID,
+		ReadBy:      []string{input.SenderID},
+		DeliveredTo: []string{input.SenderID},
+		ReplyToID:   replyToUUID,
 		Attachments: input.Attachments,
 	}
 
@@ -115,7 +148,7 @@ func (s *MessageService) deliverDirectMessage(ctx context.Context, message *mode
 	}
 
 	// Send to recipient via WebSocket if online
-	if err := s.wsManager.SendToUser(*message.RecipientID, messageJSON); err != nil {
+	if err := s.wsManager.SendToUser(message.RecipientID.String(), messageJSON); err != nil {
 		// TODO: Queue for push notification if delivery fails
 		return err
 	}
@@ -130,24 +163,45 @@ func (s *MessageService) deliverGroupMessage(ctx context.Context, message *model
 	}
 
 	// Send to all group members except sender
-	s.wsManager.SendToGroup(*message.GroupID, messageJSON, message.SenderID)
+	s.wsManager.SendToGroup(message.GroupID.String(), messageJSON, message.SenderID.String())
 	return nil
 }
 
 func (s *MessageService) GetMessage(ctx context.Context, id string) (*models.Message, error) {
-	return s.messageRepo.GetByID(ctx, id)
+	messageID, err := uuid.Parse(id)
+	if err != nil {
+		return nil, errors.New("invalid message ID")
+	}
+	return s.messageRepo.GetByID(ctx, messageID)
 }
 
 func (s *MessageService) GetUserMessages(ctx context.Context, userID string, limit, offset int) ([]models.Message, error) {
-	return s.messageRepo.GetUserMessages(ctx, userID, limit, offset)
+	userUUID, err := uuid.Parse(userID)
+	if err != nil {
+		return nil, errors.New("invalid user ID")
+	}
+	return s.messageRepo.GetUserMessages(ctx, userUUID, limit, offset)
 }
 
 func (s *MessageService) GetGroupMessages(ctx context.Context, groupID string, limit, offset int) ([]models.Message, error) {
-	return s.messageRepo.GetGroupMessages(ctx, groupID, limit, offset)
+	groupUUID, err := uuid.Parse(groupID)
+	if err != nil {
+		return nil, errors.New("invalid group ID")
+	}
+	return s.messageRepo.GetGroupMessages(ctx, groupUUID, limit, offset)
 }
 
 func (s *MessageService) GetConversation(ctx context.Context, user1ID, user2ID string, limit, offset int) ([]models.Message, error) {
-	messages, err := s.messageRepo.GetMessagesBetween(ctx, user1ID, user2ID, int64(limit), time.Now())
+	user1UUID, err := uuid.Parse(user1ID)
+	if err != nil {
+		return nil, errors.New("invalid user1 ID")
+	}
+	user2UUID, err := uuid.Parse(user2ID)
+	if err != nil {
+		return nil, errors.New("invalid user2 ID")
+	}
+
+	messages, err := s.messageRepo.GetMessagesBetween(ctx, user1UUID, user2UUID, int64(limit), time.Now())
 	if err != nil {
 		return nil, err
 	}
@@ -159,11 +213,27 @@ func (s *MessageService) GetConversation(ctx context.Context, user1ID, user2ID s
 }
 
 func (s *MessageService) MarkAsRead(ctx context.Context, messageID string, userID string) error {
-	return s.messageRepo.MarkAsRead(ctx, messageID, userID)
+	msgUUID, err := uuid.Parse(messageID)
+	if err != nil {
+		return errors.New("invalid message ID")
+	}
+	userUUID, err := uuid.Parse(userID)
+	if err != nil {
+		return errors.New("invalid user ID")
+	}
+	return s.messageRepo.MarkAsRead(ctx, msgUUID, userUUID)
 }
 
 func (s *MessageService) MarkAsDelivered(ctx context.Context, messageID string, userID string) error {
-	return s.messageRepo.MarkAsDelivered(ctx, messageID, userID)
+	msgUUID, err := uuid.Parse(messageID)
+	if err != nil {
+		return errors.New("invalid message ID")
+	}
+	userUUID, err := uuid.Parse(userID)
+	if err != nil {
+		return errors.New("invalid user ID")
+	}
+	return s.messageRepo.MarkAsDelivered(ctx, msgUUID, userUUID)
 }
 
 func (s *MessageService) UpdateMessage(ctx context.Context, message *models.Message) error {
@@ -171,5 +241,9 @@ func (s *MessageService) UpdateMessage(ctx context.Context, message *models.Mess
 }
 
 func (s *MessageService) DeleteMessage(ctx context.Context, id string) error {
-	return s.messageRepo.Delete(ctx, id)
+	messageID, err := uuid.Parse(id)
+	if err != nil {
+		return errors.New("invalid message ID")
+	}
+	return s.messageRepo.Delete(ctx, messageID)
 }
