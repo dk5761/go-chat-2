@@ -3,10 +3,12 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+	"github.com/sirupsen/logrus"
 	"github.com/sourcegraph/conc"
 	"golang.org/x/crypto/bcrypt"
 
@@ -87,9 +89,9 @@ func (s *UserService) Register(ctx context.Context, input RegisterUserInput) (*A
 	// Update user status
 	var wg conc.WaitGroup
 	wg.Go(func() {
-		if err := s.statusRepo.UpdateStatus(ctx, user.ID, "online"); err != nil {
-			// Log error but don't fail the registration
-			// TODO: Add proper logging
+		bgCtx := context.Background()
+		if err := s.statusRepo.UpdateStatus(bgCtx, user.ID, "online"); err != nil {
+			logrus.Error("Failed to update user status: ", err)
 		}
 	})
 
@@ -117,16 +119,16 @@ func (s *UserService) Login(ctx context.Context, input LoginInput) (*AuthRespons
 	// Update last seen and status concurrently
 	var wg conc.WaitGroup
 	wg.Go(func() {
-		if err := s.userRepo.UpdateLastSeen(ctx, user.ID); err != nil {
-			// Log error but don't fail the login
-			// TODO: Add proper logging
+		bgCtx := context.Background()
+		if err := s.userRepo.UpdateLastSeen(bgCtx, user.ID); err != nil {
+			logrus.Error("Failed to update user last seen: ", err)
 		}
 	})
 
 	wg.Go(func() {
-		if err := s.statusRepo.UpdateStatus(ctx, user.ID, "online"); err != nil {
-			// Log error but don't fail the login
-			// TODO: Add proper logging
+		bgCtx := context.Background()
+		if err := s.statusRepo.UpdateStatus(bgCtx, user.ID, "online"); err != nil {
+			logrus.Error("Failed to update user status: ", err)
 		}
 	})
 
@@ -209,17 +211,34 @@ func (s *UserService) ValidateToken(tokenString string) (uuid.UUID, error) {
 func (s *UserService) UpdateStatus(ctx context.Context, userID string, status string) error {
 	userUUID, err := uuid.Parse(userID)
 	if err != nil {
-		return err
+		return fmt.Errorf("invalid user ID: %w", err)
 	}
-	return s.statusRepo.UpdateStatus(ctx, userUUID, status)
+
+	// Use a background context with timeout for status updates
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := s.statusRepo.UpdateStatus(timeoutCtx, userUUID, status); err != nil {
+		return fmt.Errorf("failed to update status: %w", err)
+	}
+	return nil
 }
 
 func (s *UserService) GetUserStatus(ctx context.Context, userID string) (string, error) {
 	userUUID, err := uuid.Parse(userID)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("invalid user ID: %w", err)
 	}
-	return s.statusRepo.GetStatus(ctx, userUUID)
+
+	// Use a background context with timeout for status retrieval
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	status, err := s.statusRepo.GetStatus(timeoutCtx, userUUID)
+	if err != nil {
+		return "", fmt.Errorf("failed to get status: %w", err)
+	}
+	return status, nil
 }
 
 func (s *UserService) GetMultiUserStatus(ctx context.Context, userIDs []string) (map[string]string, error) {

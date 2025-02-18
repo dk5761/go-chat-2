@@ -3,6 +3,7 @@ package app
 import (
 	firebase "firebase.google.com/go/v4"
 	amqp "github.com/rabbitmq/amqp091-go"
+	redis "github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 
@@ -18,8 +19,8 @@ type services struct {
 	wsManager           *websocket.Manager
 }
 
-func initServices(repos *repositories, logger *logrus.Logger, rabbitmqChan *amqp.Channel, firebaseApp *firebase.App) (*services, error) {
-	wsManager := websocket.NewManager(logger)
+func initServices(repos *repositories, logger *logrus.Logger, rabbitmqChan *amqp.Channel, firebaseApp *firebase.App, redisClient *redis.Client) (*services, error) {
+	wsManager := websocket.NewManager(logger, redisClient)
 
 	userService := service.NewUserService(repos.userRepo, repos.statusRepo, viper.GetString("jwt.secret"))
 	groupService := service.NewGroupService(repos.groupRepo, repos.userRepo)

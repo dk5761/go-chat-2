@@ -6,7 +6,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
+	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
 	"github.com/sourcegraph/conc"
 )
@@ -21,13 +23,15 @@ type Client struct {
 }
 
 type Manager struct {
-	clients    map[string]*Client
-	broadcast  chan []byte
-	register   chan *Client
-	unregister chan *Client
-	mu         sync.RWMutex
-	logger     *logrus.Logger
-	wg         conc.WaitGroup
+	clients     map[string]*Client // Local cache of active connections
+	clientStore *ClientStore       // Redis-based client store
+	broadcast   chan []byte
+	register    chan *Client
+	unregister  chan *Client
+	mu          sync.RWMutex
+	logger      *logrus.Logger
+	wg          conc.WaitGroup
+	serverID    string // Unique identifier for this server instance
 }
 
 type MessageType string
@@ -47,18 +51,21 @@ type WebSocketMessage struct {
 	Timestamp   time.Time   `json:"timestamp"`
 }
 
-func NewManager(logger *logrus.Logger) *Manager {
+func NewManager(logger *logrus.Logger, redisClient *redis.Client) *Manager {
+	serverID := uuid.New().String() // Generate unique server ID
 	return &Manager{
-		clients:    make(map[string]*Client),
-		broadcast:  make(chan []byte),
-		register:   make(chan *Client),
-		unregister: make(chan *Client),
-		logger:     logger,
+		clients:     make(map[string]*Client),
+		clientStore: NewClientStore(redisClient),
+		broadcast:   make(chan []byte),
+		register:    make(chan *Client),
+		unregister:  make(chan *Client),
+		logger:      logger,
+		serverID:    serverID,
 	}
 }
 
 func (m *Manager) Start(ctx context.Context) {
-	m.logger.Info("Starting WebSocket manager")
+	m.logger.WithField("server_id", m.serverID).Info("Starting WebSocket manager")
 
 	for {
 		select {
@@ -71,16 +78,36 @@ func (m *Manager) Start(ctx context.Context) {
 			m.mu.Lock()
 			m.clients[client.ID] = client
 			m.mu.Unlock()
-			m.logger.Infof("Client %s connected", client.ID)
+
+			// Register in Redis
+			if err := m.clientStore.AddClient(ctx, client.ID, m.serverID); err != nil {
+				m.logger.WithError(err).Error("Failed to register client in Redis")
+			}
+
+			m.logger.WithFields(logrus.Fields{
+				"client_id":     client.ID,
+				"server_id":     m.serverID,
+				"total_clients": len(m.clients),
+			}).Info("Client connected")
 
 		case client := <-m.unregister:
+			m.mu.Lock()
 			if _, ok := m.clients[client.ID]; ok {
-				m.mu.Lock()
 				delete(m.clients, client.ID)
-				m.mu.Unlock()
 				close(client.Send)
-				m.logger.Infof("Client %s disconnected", client.ID)
+
+				// Remove from Redis
+				if err := m.clientStore.RemoveClient(ctx, client.ID); err != nil {
+					m.logger.WithError(err).Error("Failed to remove client from Redis")
+				}
+
+				m.logger.WithFields(logrus.Fields{
+					"client_id":     client.ID,
+					"server_id":     m.serverID,
+					"total_clients": len(m.clients),
+				}).Info("Client disconnected")
 			}
+			m.mu.Unlock()
 
 		case message := <-m.broadcast:
 			m.mu.RLock()
@@ -92,6 +119,12 @@ func (m *Manager) Start(ctx context.Context) {
 					m.mu.RUnlock()
 					m.mu.Lock()
 					delete(m.clients, client.ID)
+
+					// Remove from Redis
+					if err := m.clientStore.RemoveClient(ctx, client.ID); err != nil {
+						m.logger.WithError(err).Error("Failed to remove client from Redis")
+					}
+
 					m.mu.Unlock()
 					m.mu.RLock()
 				}
@@ -120,12 +153,30 @@ func (m *Manager) shutdown() {
 }
 
 func (m *Manager) SendToUser(userID string, message []byte) error {
+	// First check if user is connected to any server
+	connected, err := m.clientStore.IsConnected(context.Background(), userID)
+	if err != nil {
+		m.logger.WithError(err).Error("Failed to check client connection status")
+		return err
+	}
+
+	if !connected {
+		m.logger.WithField("user_id", userID).Debug("User is offline")
+		return nil
+	}
+
+	// Check if client is connected to this server
 	m.mu.RLock()
 	client, exists := m.clients[userID]
 	m.mu.RUnlock()
 
 	if !exists {
-		return nil // User is offline
+		m.logger.WithFields(logrus.Fields{
+			"user_id":   userID,
+			"server_id": m.serverID,
+			"connected": connected,
+		}).Debug("User is connected to a different server")
+		return nil
 	}
 
 	select {
@@ -141,7 +192,10 @@ func (m *Manager) SendToGroup(groupID string, message []byte, excludeUserID stri
 }
 
 func (m *Manager) HandleClient(client *Client) {
-	// Use conc.WaitGroup to manage goroutines
+	// Register the client first
+	m.register <- client
+
+	// Start client handlers in the wait group
 	m.wg.Go(func() {
 		go client.writePump()
 		go client.readPump()

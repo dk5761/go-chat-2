@@ -1,12 +1,13 @@
 package api
 
 import (
+	"context"
 	"errors"
-	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"github.com/sirupsen/logrus"
 
 	"github.com/chat-backend/internal/service"
 	wsmanager "github.com/chat-backend/internal/websocket"
@@ -47,10 +48,14 @@ func (h *WebSocketHandler) HandleConnection(c *gin.Context) {
 		return
 	}
 
+	logrus.WithFields(logrus.Fields{
+		"user_id": userID,
+	}).Info("WebSocket connection request received")
+
 	// Upgrade HTTP connection to WebSocket
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
-		log.Printf("Error upgrading connection: %v", err)
+		logrus.WithError(err).Error("Error upgrading connection")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not upgrade connection"})
 		return
 	}
@@ -63,14 +68,34 @@ func (h *WebSocketHandler) HandleConnection(c *gin.Context) {
 		Manager: h.wsManager,
 	}
 
-	// Register client
+	// Set connection close handler
+	conn.SetCloseHandler(func(code int, text string) error {
+		logrus.WithFields(logrus.Fields{
+			"user_id": userID,
+			"code":    code,
+			"text":    text,
+		}).Info("WebSocket connection closed by client")
+
+		// Update user status to offline
+		bgCtx := context.Background()
+		if err := h.userService.UpdateStatus(bgCtx, userID, "offline"); err != nil {
+			logrus.WithError(err).Error("Failed to update user status to offline")
+		}
+		return nil
+	})
+
+	// Register client and start handlers
 	h.wsManager.HandleClient(client)
 
 	// Update user status to online
-	if err := h.userService.UpdateStatus(c.Request.Context(), userID, "online"); err != nil {
-		// Log error but don't fail the connection
-		// TODO: Add proper logging
+	bgCtx := context.Background()
+	if err := h.userService.UpdateStatus(bgCtx, userID, "online"); err != nil {
+		logrus.WithError(err).Error("Failed to update user status to online")
 	}
+
+	logrus.WithFields(logrus.Fields{
+		"user_id": userID,
+	}).Info("WebSocket connection established successfully")
 }
 
 func (h *WebSocketHandler) getUserIDFromToken(c *gin.Context) (string, error) {

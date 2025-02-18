@@ -66,7 +66,7 @@ func New() (*App, error) {
 	repos := initRepositories(db, redisClient)
 
 	// Initialize services
-	services, err := initServices(repos, logger, rabbitmqChan, firebaseApp)
+	services, err := initServices(repos, logger, rabbitmqChan, firebaseApp, redisClient)
 	if err != nil {
 		return nil, err
 	}

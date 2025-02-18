@@ -3,7 +3,7 @@ package app
 import (
 	"fmt"
 
-	"github.com/redis/go-redis/v9"
+	redis "github.com/redis/go-redis/v9"
 	"github.com/spf13/viper"
 	pgdriver "gorm.io/driver/postgres"
 	"gorm.io/gorm"
