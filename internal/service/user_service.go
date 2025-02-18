@@ -5,12 +5,14 @@ import (
 	"errors"
 	"time"
 
-	"github.com/chat-backend/internal/models"
-	"github.com/chat-backend/internal/repository"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/sourcegraph/conc"
 	"golang.org/x/crypto/bcrypt"
+
+	apperrors "github.com/chat-backend/internal/apperrors"
+	"github.com/chat-backend/internal/models"
+	"github.com/chat-backend/internal/repository"
 )
 
 type UserService struct {
@@ -28,10 +30,10 @@ func NewUserService(userRepo repository.UserRepository, statusRepo repository.St
 }
 
 type RegisterUserInput struct {
-	Username string `json:"username" binding:"required"`
-	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required,min=8"`
-	FullName string `json:"full_name" binding:"required"`
+	Username string `json:"username" binding:"required" example:"johndoe" msg:"Username is required"`
+	Email    string `json:"email" binding:"required,email" example:"john@example.com" msg:"Please enter a valid email address"`
+	Password string `json:"password" binding:"required,min=8" example:"securepass123" msg:"Password must be at least 8 characters long"`
+	FullName string `json:"full_name" binding:"required" example:"John Doe" msg:"Full name is required"`
 }
 
 type LoginInput struct {
@@ -47,17 +49,17 @@ type AuthResponse struct {
 func (s *UserService) Register(ctx context.Context, input RegisterUserInput) (*AuthResponse, error) {
 	// Check if user exists
 	if _, err := s.userRepo.GetByEmail(ctx, input.Email); err == nil {
-		return nil, errors.New("user with this email already exists")
+		return nil, apperrors.ErrEmailExists
 	}
 
 	if _, err := s.userRepo.GetByUsername(ctx, input.Username); err == nil {
-		return nil, errors.New("username is already taken")
+		return nil, apperrors.ErrUsernameExists
 	}
 
 	// Hash password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
 	if err != nil {
-		return nil, err
+		return nil, apperrors.ErrServerError
 	}
 
 	// Create user
@@ -73,13 +75,13 @@ func (s *UserService) Register(ctx context.Context, input RegisterUserInput) (*A
 	}
 
 	if err := s.userRepo.Create(ctx, user); err != nil {
-		return nil, err
+		return nil, apperrors.ErrServerError
 	}
 
 	// Generate JWT token
 	token, err := s.generateToken(user.ID)
 	if err != nil {
-		return nil, err
+		return nil, apperrors.ErrServerError
 	}
 
 	// Update user status
@@ -100,16 +102,16 @@ func (s *UserService) Register(ctx context.Context, input RegisterUserInput) (*A
 func (s *UserService) Login(ctx context.Context, input LoginInput) (*AuthResponse, error) {
 	user, err := s.userRepo.GetByEmail(ctx, input.Email)
 	if err != nil {
-		return nil, errors.New("invalid email or password")
+		return nil, apperrors.ErrInvalidCredentials
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(input.Password)); err != nil {
-		return nil, errors.New("invalid email or password")
+		return nil, apperrors.ErrInvalidCredentials
 	}
 
 	token, err := s.generateToken(user.ID)
 	if err != nil {
-		return nil, err
+		return nil, apperrors.ErrServerError
 	}
 
 	// Update last seen and status concurrently
@@ -146,22 +148,30 @@ func (s *UserService) UpdateUser(ctx context.Context, user *models.User) error {
 func (s *UserService) UpdatePassword(ctx context.Context, userID uuid.UUID, oldPassword, newPassword string) error {
 	user, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
-		return err
+		return apperrors.ErrUserNotFound
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(oldPassword)); err != nil {
-		return errors.New("invalid current password")
+		return apperrors.ErrInvalidPassword
+	}
+
+	if len(newPassword) < 8 {
+		return apperrors.ErrWeakPassword
 	}
 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
 	if err != nil {
-		return err
+		return apperrors.ErrServerError
 	}
 
 	user.Password = string(hashedPassword)
 	user.UpdatedAt = time.Now()
 
-	return s.userRepo.Update(ctx, user)
+	if err := s.userRepo.Update(ctx, user); err != nil {
+		return apperrors.ErrServerError
+	}
+
+	return nil
 }
 
 func (s *UserService) generateToken(userID uuid.UUID) (string, error) {
