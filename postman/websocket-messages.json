@@ -3,35 +3,105 @@
     "user1_to_user2": {
       "chat_message": {
         "type": "chat",
+        "sender_id": "ad2968d0-32d0-4f75-9c31-76a69ad2360e",
         "recipient_id": "a3914494-c451-49cd-ad56-527ae7f45f91",
         "content": "Hello from User 1!",
-        "content_type": "text"
+        "content_type": "text",
+        "timestamp": "{{$timestamp}}"
+      },
+      "image_message": {
+        "type": "chat",
+        "sender_id": "ad2968d0-32d0-4f75-9c31-76a69ad2360e",
+        "recipient_id": "a3914494-c451-49cd-ad56-527ae7f45f91",
+        "content": "https://example.com/image.jpg",
+        "content_type": "image",
+        "timestamp": "{{$timestamp}}"
       },
       "typing_indicator": {
         "type": "typing",
-        "recipient_id": "a3914494-c451-49cd-ad56-527ae7f45f91"
+        "sender_id": "ad2968d0-32d0-4f75-9c31-76a69ad2360e",
+        "recipient_id": "a3914494-c451-49cd-ad56-527ae7f45f91",
+        "content": "typing",
+        "timestamp": "{{$timestamp}}"
       },
       "read_receipt": {
         "type": "read",
+        "sender_id": "ad2968d0-32d0-4f75-9c31-76a69ad2360e",
         "recipient_id": "a3914494-c451-49cd-ad56-527ae7f45f91",
-        "content": "MESSAGE_UUID_HERE"
+        "content": "MESSAGE_UUID_HERE",
+        "timestamp": "{{$timestamp}}"
+      },
+      "group_message": {
+        "type": "chat",
+        "sender_id": "ad2968d0-32d0-4f75-9c31-76a69ad2360e",
+        "group_id": "GROUP_UUID_HERE",
+        "content": "Hello group from User 1!",
+        "content_type": "text",
+        "timestamp": "{{$timestamp}}"
       }
     },
     "user2_to_user1": {
       "chat_message": {
         "type": "chat",
+        "sender_id": "a3914494-c451-49cd-ad56-527ae7f45f91",
         "recipient_id": "ad2968d0-32d0-4f75-9c31-76a69ad2360e",
         "content": "Hello from User 2!",
-        "content_type": "text"
+        "content_type": "text",
+        "timestamp": "{{$timestamp}}"
+      },
+      "image_message": {
+        "type": "chat",
+        "sender_id": "a3914494-c451-49cd-ad56-527ae7f45f91",
+        "recipient_id": "ad2968d0-32d0-4f75-9c31-76a69ad2360e",
+        "content": "https://example.com/image2.jpg",
+        "content_type": "image",
+        "timestamp": "{{$timestamp}}"
       },
       "typing_indicator": {
         "type": "typing",
-        "recipient_id": "ad2968d0-32d0-4f75-9c31-76a69ad2360e"
+        "sender_id": "a3914494-c451-49cd-ad56-527ae7f45f91",
+        "recipient_id": "ad2968d0-32d0-4f75-9c31-76a69ad2360e",
+        "content": "typing",
+        "timestamp": "{{$timestamp}}"
       },
       "read_receipt": {
         "type": "read",
+        "sender_id": "a3914494-c451-49cd-ad56-527ae7f45f91",
         "recipient_id": "ad2968d0-32d0-4f75-9c31-76a69ad2360e",
-        "content": "MESSAGE_UUID_HERE"
+        "content": "MESSAGE_UUID_HERE",
+        "timestamp": "{{$timestamp}}"
+      },
+      "group_message": {
+        "type": "chat",
+        "sender_id": "a3914494-c451-49cd-ad56-527ae7f45f91",
+        "group_id": "GROUP_UUID_HERE",
+        "content": "Hello group from User 2!",
+        "content_type": "text",
+        "timestamp": "{{$timestamp}}"
+      }
+    },
+    "error_cases": {
+      "invalid_type": {
+        "type": "invalid_type",
+        "sender_id": "ad2968d0-32d0-4f75-9c31-76a69ad2360e",
+        "recipient_id": "a3914494-c451-49cd-ad56-527ae7f45f91",
+        "content": "This should fail",
+        "timestamp": "{{$timestamp}}"
+      },
+      "missing_recipient": {
+        "type": "chat",
+        "sender_id": "ad2968d0-32d0-4f75-9c31-76a69ad2360e",
+        "content": "Missing recipient",
+        "content_type": "text",
+        "timestamp": "{{$timestamp}}"
+      },
+      "invalid_content_type": {
+        "type": "chat",
+        "sender_id": "ad2968d0-32d0-4f75-9c31-76a69ad2360e",
+        "recipient_id": "a3914494-c451-49cd-ad56-527ae7f45f91",
+        "content": "Invalid content type",
+        "content_type": "invalid",
+        "timestamp": "{{$timestamp}}"
       }
     }
   }

@@ -7,12 +7,34 @@
   "item": [
     {
       "name": "User 1 WebSocket",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "pm.environment.set('user1_token', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3Mzk4NTkzNzcsInVzZXJfaWQiOiJhZDI5NjhkMC0zMmQwLTRmNzUtOWMzMS03NmE2OWFkMjM2MGUifQ.teLdzRb1roPGMn7IuObxbFAV41P42w2_Rvcc0t7S8dY')"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Connection successful\", function () {",
+              "    pm.expect(pm.response.code).to.equal(101);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
       "request": {
         "method": "GET",
         "header": [
           {
             "key": "Authorization",
-            "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3Mzk4NTkzNzcsInVzZXJfaWQiOiJhZDI5NjhkMC0zMmQwLTRmNzUtOWMzMS03NmE2OWFkMjM2MGUifQ.teLdzRb1roPGMn7IuObxbFAV41P42w2_Rvcc0t7S8dY",
+            "value": "Bearer {{user1_token}}",
             "type": "text"
           }
         ],
@@ -23,20 +45,38 @@
           "port": "8080",
           "path": ["api", "v1", "ws"]
         }
-      },
-      "protocolProfileBehavior": {
-        "followRedirects": true
-      },
-      "response": []
+      }
     },
     {
       "name": "User 2 WebSocket",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "pm.environment.set('user2_token', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3Mzk4NTk0MjcsInVzZXJfaWQiOiJhMzkxNDQ5NC1jNDUxLTQ5Y2QtYWQ1Ni01MjdhZTdmNDVmOTEifQ.nqc_iKp37oCSrWN2W3VqHj1hOdabfd_H471lrNmAIF0')"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Connection successful\", function () {",
+              "    pm.expect(pm.response.code).to.equal(101);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
       "request": {
         "method": "GET",
         "header": [
           {
             "key": "Authorization",
-            "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3Mzk4NTk0MjcsInVzZXJfaWQiOiJhMzkxNDQ5NC1jNDUxLTQ5Y2QtYWQ1Ni01MjdhZTdmNDVmOTEifQ.nqc_iKp37oCSrWN2W3VqHj1hOdabfd_H471lrNmAIF0",
+            "value": "Bearer {{user2_token}}",
             "type": "text"
           }
         ],
@@ -47,11 +87,7 @@
           "port": "8080",
           "path": ["api", "v1", "ws"]
         }
-      },
-      "protocolProfileBehavior": {
-        "followRedirects": true
-      },
-      "response": []
+      }
     }
   ],
   "event": [
@@ -59,14 +95,24 @@
       "listen": "prerequest",
       "script": {
         "type": "text/javascript",
-        "exec": [""]
-      }
-    },
-    {
-      "listen": "test",
-      "script": {
-        "type": "text/javascript",
-        "exec": [""]
+        "exec": [
+          "// Set timestamp for messages",
+          "pm.environment.set('timestamp', new Date().toISOString())",
+          "",
+          "// Helper function to generate UUIDs",
+          "function generateUUID() {",
+          "    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {",
+          "        var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);",
+          "        return v.toString(16);",
+          "    });",
+          "}",
+          "",
+          "// Set message UUID for read receipts",
+          "pm.environment.set('message_uuid', generateUUID())",
+          "",
+          "// Set group UUID for group messages",
+          "pm.environment.set('group_uuid', generateUUID())"
+        ]
       }
     }
   ],
@@ -78,6 +124,10 @@
     {
       "key": "user2_id",
       "value": "a3914494-c451-49cd-ad56-527ae7f45f91"
+    },
+    {
+      "key": "base_url",
+      "value": "localhost:8080"
     }
   ]
 }
